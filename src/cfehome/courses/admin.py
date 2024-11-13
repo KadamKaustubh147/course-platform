@@ -1,12 +1,21 @@
 from cloudinary import CloudinaryImage
 from django.contrib import admin
 # Register your models here.
-from .models import Course
+from .models import Course, Lesson
 from django.utils.html import format_html
+
+# Try both admin.TabularInline and admin.StackedInline
+class LessonInline(admin.StackedInline):
+    model = Lesson
+    readonly_fields = ['updated']
+    extra = 0
+# This is inline is better to be used when there is a relationship between two models here there was a one to many relationship
+
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
     # ordering bhi change kar sakte
+    inlines = [LessonInline]
     list_display = ['title', 'status', 'access', 'display_image']
     list_filter =  ['status', 'access']
     fields = ['title', 'description', 'status', 'image', 'access', 'display_image']

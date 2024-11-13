@@ -42,6 +42,11 @@ class AccessRequirement(models.TextChoices):
 def handle_upload(instance, filename):
     return f"{filename}"
 
+def get_public_id_prefix(self, *args, **kwargs):
+    print(args, kwargs) # nothing is passed in kwargs and args the only argument that comes in here the class the instance
+    # here self refers to the class
+    return "courses"
+
 
 # This is a model obv
 class Course(models.Model):
@@ -49,7 +54,7 @@ class Course(models.Model):
     description = models.TextField(blank=True, null=True) # null=True matlab database mei empty ho sakta hai
     
     # image = models.ImageField(upload_to=handle_upload, blank=True, null=True)
-    image = CloudinaryField("image")
+    image = CloudinaryField("image", null=True, public_id_prefix=get_public_id_prefix)
     # access choices rakhenge
     access = models.CharField(
         max_length=5,
@@ -60,7 +65,7 @@ class Course(models.Model):
         max_length=10,
         choices=PublishStatus.choices,
         default=PublishStatus.DRAFT
-        )
+    )
     # image = models.ImageField()
     
     '''
@@ -140,10 +145,36 @@ In short, `is_published()` will check if the object's `status` indicates that it
 
 # Lesson.objects.all()
 # Lesson.objects.first() one of them
-# course_obj = Course.objects.first()
+# course_obj = Course.objects.first() --> first object milega
 # Lessons.objects.filter(my_related_obj__id=course_obj.id)
+# course_qs = Course.objects.filter(my_related_obj__id=course_obj.id)
+# id voh sab ka migrations dekho
 
+# each row is an object
 
+# Cloudinary field pe click karo
 class Lesson(models.Model):
     title = models.CharField(max_length=120)
     description = models.TextField(blank=True, null=True)
+    # attaching this lesson to the foreign key
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    # If a course is deleted all the lessons will be deleted too
+    thumbnail = CloudinaryField("image", blank=True, null=True)
+    video = CloudinaryField("video", blank=True, null=True, resource_type="video")
+    order = models.IntegerField(default=0)
+    can_preview = models.BooleanField(default=False, help_text="If user does not have access to course, can they see this?")
+    
+    status = models.CharField(
+        max_length=10,
+        choices=PublishStatus.choices,
+        default=PublishStatus.PUBLISHED
+    )
+    # ye updated ka har baar karna padta hai 
+    timestamp = models.DateTimeField(auto_now_add=True) # ye one time rehta hai
+    updated = models.DateTimeField(auto_now=True)
+    
+    # In Django, a Meta class inside a model provides additional options to customize the behavior of the model. It's used to specify things like table names, ordering, permissions, and other settings that are relevant to the model as a whole rather than individual fields. Here's how it works and some commonly used options:
+
+    class Meta:
+        ordering = ["order", "-updated"]
+        # pehle order ka order then updated voh bhi newest se oldest ka order
