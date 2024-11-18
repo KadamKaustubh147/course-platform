@@ -18,8 +18,8 @@ class CourseAdmin(admin.ModelAdmin):
     inlines = [LessonInline]
     list_display = ['title', 'status', 'access', 'display_image']
     list_filter =  ['status', 'access']
-    fields = ['title', 'description', 'status', 'image', 'access', 'display_image']
-    readonly_fields = ['display_image']
+    fields = ['public_id', 'title', 'description', 'status', 'image', 'access', 'display_image']
+    readonly_fields = ['display_image', 'public_id']
     
     # args and kwargs not used
     def display_image(self, obj, *args,**kwargs):

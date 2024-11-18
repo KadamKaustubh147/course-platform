@@ -1,5 +1,7 @@
+import uuid
 import helpers
 from django.db import models
+from django.utils.text import slugify
 from cloudinary.models import CloudinaryField
 
 helpers.cloudinary_init()
@@ -42,19 +44,42 @@ class AccessRequirement(models.TextChoices):
 def handle_upload(instance, filename):
     return f"{filename}"
 
-def get_public_id_prefix(self, *args, **kwargs):
-    print(args, kwargs) # nothing is passed in kwargs and args the only argument that comes in here the class the instance
-    # here self refers to the class
-    return "courses"
 
+def generate_public_id(self, *args, **kwargs):
+    unique_id = str(uuid.uuid4()).replace("-", "")
+    if not self.title:
+        return unique_id
+    
+    return f"{slugify(self.title)}-{unique_id[:5]}"
+
+def get_public_id_prefix(self, *args, **kwargs):
+    # print(args, kwargs) # nothing is passed in kwargs and args the only argument that comes in here the class the instance
+    # here self refers to the class
+    public_id = self.public_id
+    if not public_id:
+        return "courses" 
+    return f"courses/{public_id}"
+
+def get_display_name(self, *args, **kwargs):
+    
+    title = self.title
+    if title:
+        return title
+    return "Courses Upload"
 
 # This is a model obv
 class Course(models.Model):
     title = models.CharField(max_length=120)
     description = models.TextField(blank=True, null=True) # null=True matlab database mei empty ho sakta hai
+    public_id = models.CharField(max_length=130, blank=True, null=True)
     
     # image = models.ImageField(upload_to=handle_upload, blank=True, null=True)
-    image = CloudinaryField("image", null=True, public_id_prefix=get_public_id_prefix)
+    image = CloudinaryField(
+        "image", null=True, public_id_prefix=get_public_id_prefix, display_name=get_display_name,
+        tags = ["course", "thumbnail"]
+    )
+    # public_id_prefix admin panel mei dikhega and cloudinary mei bhi dikhega, image ke url mei dikhega
+    # display_name and tags cloudinary mei dikhega
     # access choices rakhenge
     access = models.CharField(
         max_length=5,
@@ -67,6 +92,19 @@ class Course(models.Model):
         default=PublishStatus.DRAFT
     )
     # image = models.ImageField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    
+    
+    def save(self, *args, **kwargs):
+        # before save
+        if self.public_id is None or self.public_id == "":
+            self.public_id = generate_public_id(self) 
+        super().save(*args, **kwargs)
+        # after save
+
+    #! The purpose of this custom save method is to ensure that every instance of this model has a unique public_id attribute. If the public_id is not provided when creating a new instance, it will be automatically generated using the generate_public_id function.
+    
     
     '''
         The @property decorator allows you to define a method as if it were an attribute. This means that instead of calling it like a method (object.is_published()), you can access it like an attribute (object.is_published).
